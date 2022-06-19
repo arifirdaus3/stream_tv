@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/arifirdaus3/stream_tv/model"
@@ -16,9 +18,25 @@ import (
 )
 
 func main() {
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbName := os.Getenv("DB_NAME")
+	dbConnection, _ := strconv.Atoi(os.Getenv("DB_MAX_CONNECTIONS"))
+	if dbConnection == 0 {
+		dbConnection = 10
+	}
+
+	dsn := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable TimeZone=Asia/Jakarta", dbHost, dbPort, dbUser, dbName, dbPassword)
+
 	db, err := gorm.Open(postgres.New(postgres.Config{
-		DSN: "host=localhost user=postgres password=postgres dbname=iptv port=1999 sslmode=disable TimeZone=Asia/Jakarta",
+		DSN: dsn,
 	}), &gorm.Config{})
+
+	sql, _ := db.DB()
+	sql.SetMaxOpenConns(dbConnection)
+	sql.SetMaxIdleConns(dbConnection / 2)
 
 	if err != nil {
 		log.Fatal(err)
@@ -54,6 +72,6 @@ func main() {
 	r.Get("/channel", routeHandler.handleChannel)
 	r.Get("/guide", routeHandler.handleGuide)
 
-	fmt.Println("listen")
-	http.ListenAndServe("localhost:80", r)
+	fmt.Println("listen at port 80")
+	http.ListenAndServe(":80", r)
 }

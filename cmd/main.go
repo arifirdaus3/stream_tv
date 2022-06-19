@@ -18,20 +18,14 @@ import (
 )
 
 func main() {
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbName := os.Getenv("DB_NAME")
+	dbDSN := os.Getenv("DB_DSN")
 	dbConnection, _ := strconv.Atoi(os.Getenv("DB_MAX_CONNECTIONS"))
 	if dbConnection == 0 {
 		dbConnection = 10
 	}
 
-	dsn := fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=disable TimeZone=Asia/Jakarta", dbHost, dbPort, dbUser, dbName, dbPassword)
-
 	db, err := gorm.Open(postgres.New(postgres.Config{
-		DSN: dsn,
+		DSN: dbDSN,
 	}), &gorm.Config{})
 
 	sql, _ := db.DB()

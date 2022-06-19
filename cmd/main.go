@@ -66,6 +66,9 @@ func main() {
 	r.Get("/channel", routeHandler.handleChannel)
 	r.Get("/guide", routeHandler.handleGuide)
 
-	fmt.Println("listen at port 80")
-	http.ListenAndServe(":80", r)
+	port := os.Getenv("PORT")
+	fmt.Println("listen at port ", port)
+	if err := http.ListenAndServe(":"+port, r); err != nil {
+		log.Fatal(err)
+	}
 }

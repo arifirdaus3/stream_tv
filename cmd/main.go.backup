@@ -1,0 +1,465 @@
+package main
+
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/arifirdaus3/stream_tv/model"
+	_ "github.com/lib/pq"
+)
+
+func main() {
+	connStr := "postgresql://postgres:postgres@localhost:1999/stream_tv?sslmode=disable"
+	// Connect to database
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err = db.Ping(); err != nil {
+		log.Fatal(err)
+	}
+
+	populateChannelLanguage(db)
+}
+
+func populateCategory(db *sql.DB) {
+	url := "https://iptv-org.github.io/api/categories.json"
+	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var res []model.Category
+	json.NewDecoder(resp.Body).Decode(&res)
+
+	query := `INSERT INTO category (id, name) VALUES `
+
+	values := []interface{}{}
+	for i, s := range res {
+		values = append(values, s.ID, s.Name)
+
+		numFields := 2 // the number of fields you are inserting
+		n := i * numFields
+
+		query += `(`
+		for j := 0; j < numFields; j++ {
+			query += `$` + strconv.Itoa(n+j+1) + `,`
+		}
+		query = query[:len(query)-1] + `),`
+	}
+	query = query[:len(query)-1] + " ON CONFLICT (id) DO UPDATE SET name = excluded.name;"
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = tx.Exec(query, values...)
+	if err != nil {
+		tx.Rollback()
+		log.Fatal("exec ", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Inserted ", len(res), " to category table")
+}
+func populateLanguage(db *sql.DB) {
+	url := "https://iptv-org.github.io/api/languages.json"
+	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var res []model.Language
+	json.NewDecoder(resp.Body).Decode(&res)
+
+	query := `INSERT INTO language (id, name) VALUES `
+
+	values := []interface{}{}
+	for i, s := range res {
+		values = append(values, s.Code, s.Name)
+
+		numFields := 2 // the number of fields you are inserting
+		n := i * numFields
+
+		query += `(`
+		for j := 0; j < numFields; j++ {
+			query += `$` + strconv.Itoa(n+j+1) + `,`
+		}
+		query = query[:len(query)-1] + `),`
+	}
+	query = query[:len(query)-1] + " ON CONFLICT (id) DO UPDATE SET name = excluded.name;"
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = tx.Exec(query, values...)
+	if err != nil {
+		tx.Rollback()
+		log.Fatal("exec ", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Inserted ", len(res), " to language table")
+}
+func populateRegion(db *sql.DB) {
+	url := "https://iptv-org.github.io/api/regions.json"
+	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var res []model.Region
+	json.NewDecoder(resp.Body).Decode(&res)
+
+	query := `INSERT INTO region (id, name) VALUES `
+
+	values := []interface{}{}
+	for i, s := range res {
+		values = append(values, s.Code, s.Name)
+
+		numFields := 2 // the number of fields you are inserting
+		n := i * numFields
+
+		query += `(`
+		for j := 0; j < numFields; j++ {
+			query += `$` + strconv.Itoa(n+j+1) + `,`
+		}
+		query = query[:len(query)-1] + `),`
+	}
+	query = query[:len(query)-1] + " ON CONFLICT (id) DO UPDATE SET name = excluded.name;"
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = tx.Exec(query, values...)
+	if err != nil {
+		tx.Rollback()
+		log.Fatal("exec ", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Inserted ", len(res), " to region table")
+}
+func populateCountry(db *sql.DB) {
+	url := "https://iptv-org.github.io/api/countries.json"
+	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var res []model.Country
+	json.NewDecoder(resp.Body).Decode(&res)
+
+	query := `INSERT INTO country (id, name, flag, language_id) VALUES `
+
+	values := []interface{}{}
+	for i, s := range res {
+		values = append(values, s.Code, s.Name, s.Flag, s.Lang)
+
+		numFields := 4 // the number of fields you are inserting
+		n := i * numFields
+
+		query += `(`
+		for j := 0; j < numFields; j++ {
+			query += `$` + strconv.Itoa(n+j+1) + `,`
+		}
+		query = query[:len(query)-1] + `),`
+	}
+	query = query[:len(query)-1] + " ON CONFLICT (id) DO UPDATE SET name = excluded.name, flag = excluded.flag, language_id = excluded.language_id;"
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = tx.Exec(query, values...)
+	if err != nil {
+		tx.Rollback()
+		log.Fatal("exec ", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Inserted ", len(res), " to country table")
+}
+func populateSubdivision(db *sql.DB) {
+	url := "https://iptv-org.github.io/api/subdivisions.json"
+	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var res []model.Subdivision
+	json.NewDecoder(resp.Body).Decode(&res)
+
+	query := `INSERT INTO subdivision (id, name, country_id) VALUES `
+
+	values := []interface{}{}
+	for i, s := range res {
+		values = append(values, s.Code, s.Name, s.Country)
+
+		numFields := 3 // the number of fields you are inserting
+		n := i * numFields
+
+		query += `(`
+		for j := 0; j < numFields; j++ {
+			query += `$` + strconv.Itoa(n+j+1) + `,`
+		}
+		query = query[:len(query)-1] + `),`
+	}
+	query = query[:len(query)-1] + " ON CONFLICT (id) DO UPDATE SET name = excluded.name, country_id = excluded.country_id;"
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = tx.Exec(query, values...)
+	if err != nil {
+		tx.Rollback()
+		log.Fatal("exec ", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Inserted ", len(res), " to subdivision table")
+}
+func populateRegionCountry(db *sql.DB) {
+	url := "https://iptv-org.github.io/api/regions.json"
+	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var res []model.Region
+	json.NewDecoder(resp.Body).Decode(&res)
+
+	query := `INSERT INTO region_country (region_id, country_id) VALUES `
+
+	values := []interface{}{}
+	index := 0
+	for _, s := range res {
+		for _, c := range s.Countries {
+			values = append(values, s.Code, c)
+
+			numFields := 2 // the number of fields you are inserting
+			n := index * numFields
+
+			query += `(`
+			for j := 0; j < numFields; j++ {
+				query += `$` + strconv.Itoa(n+j+1) + `,`
+			}
+			query = query[:len(query)-1] + `),`
+			index++
+		}
+
+	}
+	query = query[:len(query)-1]
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = tx.Exec(query, values...)
+	if err != nil {
+		tx.Rollback()
+		log.Fatal("exec ", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Inserted ", index, " to region country table")
+}
+func populateChannel(db *sql.DB) {
+	url := "https://iptv-org.github.io/api/channels.json"
+	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var res []model.Channel
+	json.NewDecoder(resp.Body).Decode(&res)
+	in := [][]model.Channel{}
+	for i := 0; i < len(res); i++ {
+		temp := []model.Channel{}
+		for j := 0; j < 500; j++ {
+			if i == len(res)-1 {
+				break
+			}
+			temp = append(temp, res[i])
+			i++
+		}
+		in = append(in, temp)
+	}
+	fmt.Println("Batching done ", len(in), len(res))
+	for _, v := range in {
+		query := `INSERT INTO channel (id, name, native_name, network, country_id, subdivision_id, city, broadcast_area, is_nsfw, launched, closed, replaced_by, website, logo) VALUES `
+
+		values := []interface{}{}
+		for i, s := range v {
+			bc := strings.Join(s.BroadcastArea, "#")
+			sd := sql.NullString{String: s.Subdivision, Valid: true}
+			if s.Subdivision == "" {
+				sd.Valid = false
+			}
+			values = append(values, s.ID, s.Name, s.NativeName, s.Network, s.Country, sd, s.City, bc, s.IsNsfw, s.Launched, s.Closed, s.ReplacedBy, s.Website, s.Logo)
+
+			numFields := 14 // the number of fields you are inserting
+			n := i * numFields
+
+			query += `(`
+			for j := 0; j < numFields; j++ {
+				query += `$` + strconv.Itoa(n+j+1) + `,`
+			}
+			query = query[:len(query)-1] + `),`
+		}
+		query = query[:len(query)-1] + " ON CONFLICT (id) DO NOTHING;"
+		tx, err := db.Begin()
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = tx.Exec(query, values...)
+		if err != nil {
+			tx.Rollback()
+			log.Fatal("exec ", err)
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Inserted ", len(v), " to channel table")
+	}
+
+}
+
+func populateChannelCategories(db *sql.DB) {
+	url := "https://iptv-org.github.io/api/channels.json"
+	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var res []model.Channel
+	json.NewDecoder(resp.Body).Decode(&res)
+	in := [][]model.Channel{}
+	for i := 0; i < len(res); i++ {
+		temp := []model.Channel{}
+		for j := 0; j < 500; j++ {
+			if i == len(res)-1 {
+				break
+			}
+			temp = append(temp, res[i])
+			i++
+		}
+		in = append(in, temp)
+	}
+	fmt.Println("Batching done ", len(in), len(res))
+	for _, v := range in {
+		query := `INSERT INTO channel_category (channel_id, category_id) VALUES `
+
+		values := []interface{}{}
+		index := 0
+		for _, s := range v {
+			for _, c := range s.Categories {
+				values = append(values, s.ID, c)
+
+				numFields := 2 // the number of fields you are inserting
+				n := index * numFields
+
+				query += `(`
+				for j := 0; j < numFields; j++ {
+					query += `$` + strconv.Itoa(n+j+1) + `,`
+				}
+				query = query[:len(query)-1] + `),`
+				index++
+			}
+
+		}
+		query = query[:len(query)-1] + " ON CONFLICT (channel_id, category_id) DO NOTHING;"
+		tx, err := db.Begin()
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = tx.Exec(query, values...)
+		if err != nil {
+			tx.Rollback()
+			log.Fatal("exec ", err)
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Inserted ", len(v), " to channel table")
+	}
+
+}
+
+func populateChannelLanguage(db *sql.DB) {
+	url := "https://iptv-org.github.io/api/channels.json"
+	req, _ := http.NewRequest(http.MethodGet, url, http.NoBody)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var res []model.Channel
+	json.NewDecoder(resp.Body).Decode(&res)
+	in := [][]model.Channel{}
+	for i := 0; i < len(res); i++ {
+		temp := []model.Channel{}
+		for j := 0; j < 500; j++ {
+			if i == len(res)-1 {
+				break
+			}
+			temp = append(temp, res[i])
+			i++
+		}
+		in = append(in, temp)
+	}
+	fmt.Println("Batching done ", len(in), len(res))
+	for _, v := range in {
+		query := `INSERT INTO channel_language (channel_id, language_id) VALUES `
+
+		values := []interface{}{}
+		index := 0
+		for _, s := range v {
+			for _, c := range s.Languages {
+				values = append(values, s.ID, c)
+
+				numFields := 2 // the number of fields you are inserting
+				n := index * numFields
+
+				query += `(`
+				for j := 0; j < numFields; j++ {
+					query += `$` + strconv.Itoa(n+j+1) + `,`
+				}
+				query = query[:len(query)-1] + `),`
+				index++
+			}
+
+		}
+		query = query[:len(query)-1] + " ON CONFLICT (channel_id, language_id) DO NOTHING;"
+		tx, err := db.Begin()
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = tx.Exec(query, values...)
+		if err != nil {
+			tx.Rollback()
+			log.Fatal("exec ", err)
+		}
+		err = tx.Commit()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Inserted ", len(v), " to channel table")
+	}
+
+}
